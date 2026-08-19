@@ -9,6 +9,7 @@
 - 削除済みのカテゴリや項目を過去記録から消さないため、原則として物理削除ではなく `is_active` を使う
 - 分析用の集計テーブルはMVPでは持たず、まずは通常テーブルから集計する
 - UIでは「できごと」と表現するが、DB・コード上では一般的な `event` / `events` を使う
+- DBスキーマの正本は `supabase/migrations/` とする
 
 ---
 
@@ -40,6 +41,13 @@ Supabase Auth のユーザーと紐付ける。
 | created_at | timestamptz | 作成日時 |
 | updated_at | timestamptz | 更新日時 |
 
+### 制約・補足
+
+- `id` は `auth.users(id)` を参照する
+- Authユーザー削除時は `ON DELETE CASCADE`
+- `created_at` / `updated_at` は `NOT NULL`
+- `created_at` / `updated_at` の初期値は `now()`
+
 ---
 
 ## 4. daily_records
@@ -58,9 +66,14 @@ Supabase Auth のユーザーと紐付ける。
 | created_at | timestamptz | 作成日時 |
 | updated_at | timestamptz | 更新日時 |
 
-### 制約
+### 制約・補足
+
+- `id` は `gen_random_uuid()` で自動採番
+- `user_id` / `record_date` / `created_at` / `updated_at` は `NOT NULL`
+- `user_id` は `users(id)` を参照し、ユーザー削除時は `ON DELETE CASCADE`
 - `unique(user_id, record_date)`
 - `condition_score between 0 and 10`
+- `created_at` / `updated_at` の初期値は `now()`
 
 ---
 
@@ -78,6 +91,15 @@ Supabase Auth のユーザーと紐付ける。
 | created_at | timestamptz | 作成日時 |
 | updated_at | timestamptz | 更新日時 |
 
+### 制約・補足
+
+- `id` は `gen_random_uuid()` で自動採番
+- `user_id` / `name` / `sort_order` / `is_active` / `created_at` / `updated_at` は `NOT NULL`
+- `user_id` は `users(id)` を参照し、ユーザー削除時は `ON DELETE CASCADE`
+- `sort_order` の初期値は `0`
+- `is_active` の初期値は `true`
+- `created_at` / `updated_at` の初期値は `now()`
+
 ---
 
 ## 6. daily_record_symptoms
@@ -89,8 +111,12 @@ Supabase Auth のユーザーと紐付ける。
 | daily_record_id | uuid FK | 日次記録 |
 | symptom_id | uuid FK | 症状 |
 
-### 主キー
-- `(daily_record_id, symptom_id)`
+### 制約・補足
+
+- 主キーは `(daily_record_id, symptom_id)`
+- 両カラムとも `NOT NULL`
+- `daily_record_id` は `daily_records(id)` を参照し、日次記録削除時は `ON DELETE CASCADE`
+- `symptom_id` は `symptom_definitions(id)` を参照し、症状定義削除時は `ON DELETE CASCADE`
 
 ---
 
@@ -117,6 +143,15 @@ Supabase Auth のユーザーと紐付ける。
 | created_at | timestamptz | 作成日時 |
 | updated_at | timestamptz | 更新日時 |
 
+### 制約・補足
+
+- `id` は `gen_random_uuid()` で自動採番
+- `user_id` / `name` / `field_type` / `sort_order` / `is_active` / `created_at` / `updated_at` は `NOT NULL`
+- `user_id` は `users(id)` を参照し、ユーザー削除時は `ON DELETE CASCADE`
+- `sort_order` の初期値は `0`
+- `is_active` の初期値は `true`
+- `created_at` / `updated_at` の初期値は `now()`
+
 ### お通じの初期設定例
 
 ```json
@@ -138,8 +173,14 @@ Supabase Auth のユーザーと紐付ける。
 | created_at | timestamptz | 作成日時 |
 | updated_at | timestamptz | 更新日時 |
 
-### 制約
+### 制約・補足
+
+- `id` は `gen_random_uuid()` で自動採番
+- `daily_record_id` / `field_definition_id` / `created_at` / `updated_at` は `NOT NULL`
+- `daily_record_id` は `daily_records(id)` を参照し、日次記録削除時は `ON DELETE CASCADE`
+- `field_definition_id` は `extra_field_definitions(id)` を参照し、項目定義削除時は `ON DELETE CASCADE`
 - `unique(daily_record_id, field_definition_id)`
+- `created_at` / `updated_at` の初期値は `now()`
 
 ---
 
@@ -156,6 +197,15 @@ Supabase Auth のユーザーと紐付ける。
 | is_active | boolean | 使用中か |
 | created_at | timestamptz | 作成日時 |
 | updated_at | timestamptz | 更新日時 |
+
+### 制約・補足
+
+- `id` は `gen_random_uuid()` で自動採番
+- `user_id` / `name` / `sort_order` / `is_active` / `created_at` / `updated_at` は `NOT NULL`
+- `user_id` は `users(id)` を参照し、ユーザー削除時は `ON DELETE CASCADE`
+- `sort_order` の初期値は `0`
+- `is_active` の初期値は `true`
+- `created_at` / `updated_at` の初期値は `now()`
 
 ---
 
@@ -179,6 +229,16 @@ Supabase Auth のユーザーと紐付ける。
 | created_at | timestamptz | 作成日時 |
 | updated_at | timestamptz | 更新日時 |
 
+### 制約・補足
+
+- `id` は `gen_random_uuid()` で自動採番
+- `user_id` / `category_id` / `name` / `sort_order` / `is_active` / `created_at` / `updated_at` は `NOT NULL`
+- `user_id` は `users(id)` を参照し、ユーザー削除時は `ON DELETE CASCADE`
+- `category_id` は `categories(id)` を参照し、参照中カテゴリの削除は `ON DELETE RESTRICT`
+- `sort_order` の初期値は `0`
+- `is_active` の初期値は `true`
+- `created_at` / `updated_at` の初期値は `now()`
+
 ---
 
 ## 11. events
@@ -198,8 +258,8 @@ Googleカレンダー由来でも、アプリ内で直接追加したもので�
 | duration_minutes | integer | 実施時間（分） |
 | pre_memo | text | 事前メモ |
 | post_memo | text | 実施メモ |
-| status | text | `scheduled` / `completed` / `cancelled` / `skipped` |
-| source | text | `manual` / `google_calendar` |
+| status | text | ステータス |
+| source | text | 登録元 |
 | google_calendar_id | text | GoogleカレンダーID |
 | google_event_id | text | GoogleイベントID |
 | google_event_label_id | text | GoogleイベントラベルID |
@@ -207,11 +267,20 @@ Googleカレンダー由来でも、アプリ内で直接追加したもので�
 | updated_at | timestamptz | 更新日時 |
 
 ### 制約・補足
-- Google由来の場合:
-  `unique(user_id, google_calendar_id, google_event_id)`
+
+- `id` は `gen_random_uuid()` で自動採番
+- `user_id` / `item_id` / `happened_on` / `status` / `source` / `created_at` / `updated_at` は `NOT NULL`
+- `user_id` は `users(id)` を参照し、ユーザー削除時は `ON DELETE CASCADE`
+- `item_id` は `items(id)` を参照し、参照中項目の削除は `ON DELETE RESTRICT`
+- `status` は `scheduled` / `completed` / `cancelled` / `skipped`
+- `status` の初期値は `scheduled`
+- `source` は `manual` / `google_calendar`
+- `source` の初期値は `manual`
+- Google由来の場合は `unique(user_id, google_calendar_id, google_event_id)`
 - `duration_minutes` は実績として手入力可能
 - 未入力時は `start_at` と `end_at` から算出可能
 - Googleカレンダー側で予定時刻やタイトルを変更しても、`google_event_id` で同一予定として追従する
+- `created_at` / `updated_at` の初期値は `now()`
 
 ---
 
@@ -231,10 +300,18 @@ Googleカレンダーのイベントラベルと「すくう」の項目を紐�
 | created_at | timestamptz | 作成日時 |
 | updated_at | timestamptz | 更新日時 |
 
-### 制約
+### 制約・補足
+
+- `id` は `gen_random_uuid()` で自動採番
+- `user_id` / `google_calendar_id` / `google_event_label_id` / `item_id` / `is_active` / `created_at` / `updated_at` は `NOT NULL`
+- `user_id` は `users(id)` を参照し、ユーザー削除時は `ON DELETE CASCADE`
+- `item_id` は `items(id)` を参照し、項目削除時は `ON DELETE CASCADE`
 - `unique(user_id, google_calendar_id, google_event_label_id)`
+- `is_active` の初期値は `true`
+- `created_at` / `updated_at` の初期値は `now()`
 
 ### 方針
+
 ラベル名は表示用。
 判定には必ず `google_event_label_id` を使う。
 
@@ -254,8 +331,13 @@ Googleカレンダーの差分同期状態を保持する。
 | created_at | timestamptz | 作成日時 |
 | updated_at | timestamptz | 更新日時 |
 
-### 制約
+### 制約・補足
+
+- `id` は `gen_random_uuid()` で自動採番
+- `user_id` / `google_calendar_id` / `created_at` / `updated_at` は `NOT NULL`
+- `user_id` は `users(id)` を参照し、ユーザー削除時は `ON DELETE CASCADE`
 - `unique(user_id, google_calendar_id)`
+- `created_at` / `updated_at` の初期値は `now()`
 
 ---
 
@@ -266,10 +348,19 @@ Googleカレンダーの差分同期状態を保持する。
 | カラム | 型 | 内容 |
 |---|---|---|
 | user_id | uuid PK/FK | ユーザー |
-| timezone | text | 初期値 `Asia/Tokyo` |
-| day_start_hour | smallint | 1日の切り替え時刻。初期値 0 |
+| timezone | text | タイムゾーン |
+| day_start_hour | smallint | 1日の切り替え時刻 |
 | created_at | timestamptz | 作成日時 |
 | updated_at | timestamptz | 更新日時 |
+
+### 制約・補足
+
+- `user_id` は `users(id)` を参照し、ユーザー削除時は `ON DELETE CASCADE`
+- `timezone` / `day_start_hour` / `created_at` / `updated_at` は `NOT NULL`
+- `timezone` の初期値は `Asia/Tokyo`
+- `day_start_hour` の初期値は `0`
+- `day_start_hour between 0 and 23`
+- `created_at` / `updated_at` の初期値は `now()`
 
 ---
 
@@ -302,7 +393,25 @@ users
 
 ---
 
-## 17. MVP時点での考え方
+## 17. DB実装方針
+
+実装時は、以下を原則とする。
+
+- UUID主キーは `gen_random_uuid()` により自動採番する
+- `users.id` は例外として `auth.users.id` と同じIDを使用する
+- `created_at` / `updated_at` は `default now()` を設定する
+- 必須項目には `NOT NULL` 制約を付与する
+- `sort_order` は `default 0`
+- `is_active` は `default true`
+- 列挙値（例: `status`、`source`）は `CHECK` 制約で保証する
+- 外部キーは用途に応じて `ON DELETE CASCADE` または `ON DELETE RESTRICT` を設定する
+- インデックスはマイグレーションで管理する
+- DBスキーマの正本は `supabase/migrations/` とする
+- RLSは認証実装後に有効化し、基本ポリシーは `auth.uid() = user_id` とする
+
+---
+
+## 18. MVP時点での考え方
 
 - DBは拡張可能にするが、UIでは必要な項目だけ見せる
 - 1人利用でも `user_id` を持たせ、Supabase Auth / RLSの土台にする
