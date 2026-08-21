@@ -7,18 +7,36 @@ import { createClient } from "@/lib/supabase/client";
 export default function HomePage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
-  const [email, setEmail] = useState("");
+
+  const [displayName, setDisplayName] = useState("");
 
   useEffect(() => {
-    const loadUser = async () => {
-      const { data } = await supabase.auth.getUser();
+    const loadProfile = async () => {
+      // まず、現在ログインしているAuthユーザーを取得
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-      if (data.user) {
-        setEmail(data.user.email ?? "");
+      if (!user) {
+        return;
       }
+
+      // public.users から自分自身のdisplay_nameを取得
+      const { data, error } = await supabase
+        .from("users")
+        .select("display_name")
+        .eq("id", user.id)
+        .single();
+
+      if (error) {
+        console.error("Failed to load profile:", error);
+        return;
+      }
+
+      setDisplayName(data.display_name ?? "");
     };
 
-    loadUser();
+    loadProfile();
   }, [supabase]);
 
   const handleLogout = async () => {
@@ -34,7 +52,7 @@ export default function HomePage() {
         <p className="mt-6 text-zinc-600">ログイン中のユーザー</p>
 
         <p className="mt-2 break-all font-semibold text-zinc-900">
-          {email || "取得中..."}
+          {displayName || "取得中..."}
         </p>
 
         <button
