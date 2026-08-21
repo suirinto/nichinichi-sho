@@ -4,82 +4,30 @@
 
 ## 概要
 
-日々抄は、体調や活動、ケアなどの日々のアクションを拾い上げ、
-自分を整え続けるためのライフログアプリです。
-
-Googleカレンダーと連携し、日々の出来事や体調の変化を無理なく記録・振り返ることを目的としています。
-
----
-
-## 主な機能（予定）
-
-- 日々の体調記録
-- 症状の記録
-- お通じなどの追加記録
-- 活動・運動・ケアの記録
-- Googleカレンダー連携
-- 分析・可視化
-
----
+日々抄は、日々の体調・活動・ケア・出来事を記録し、振り返りを支援するライフログアプリです。
 
 ## 技術スタック
 
-- Next.js
-- TypeScript
-- Tailwind CSS
-- Supabase
-- PostgreSQL
-- Google Calendar API
-- Render
+-   Next.js
+-   TypeScript
+-   Tailwind CSS
+-   Supabase
+-   PostgreSQL
+-   Render
 
----
+## セットアップ
 
-## 開発環境
-
-### 起動
-
-```bash
+``` bash
 npm install
 npm run dev
 ```
 
-ブラウザで以下を開きます。
+## ドキュメント
 
-```
-http://localhost:3000
-```
+-   docs/development.md
+-   docs/database.md
+-   docs/authentication.md
+-   docs/deployment.md
+-   docs/architecture.md
 
----
-
-## ディレクトリ構成
-
-詳細は開発とともに更新します。
-
-```
-app/
-components/
-lib/
-public/
-```
-
----
-
-## 開発方針
-
-- シンプルな実装を優先する
-- 拡張しやすい設計を心掛ける
-- UIは「日々抄」の世界観を大切にする
-- DB・コードは一般的な命名規則を採用する
-
----
-
-## デプロイ
-
-- GitHub
-- Render
-
----
-
-## License
-
-Private Project
+READMEは概要のみを記載し、詳細はdocs配下にまとめます。
