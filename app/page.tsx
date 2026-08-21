@@ -4,15 +4,21 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
+type DailyRecord = {
+  id: string;
+  user_id: string;
+  record_date: string;
+};
+
 export default function HomePage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
 
   const [displayName, setDisplayName] = useState("");
+  const [dailyRecord, setDailyRecord] = useState<DailyRecord | null>(null);
 
   useEffect(() => {
-    const loadProfile = async () => {
-      // まず、現在ログインしているAuthユーザーを取得
+    const loadData = async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -21,22 +27,63 @@ export default function HomePage() {
         return;
       }
 
-      // public.users から自分自身のdisplay_nameを取得
-      const { data, error } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from("users")
         .select("display_name")
         .eq("id", user.id)
         .single();
 
-      if (error) {
-        console.error("Failed to load profile:", error);
+      if (profileError) {
+        console.error("Failed to load profile:", profileError);
         return;
       }
 
-      setDisplayName(data.display_name ?? "");
+      setDisplayName(profile.display_name ?? "");
+
+      const recordDate = new Date().toLocaleDateString("sv-SE", {
+        timeZone: "Asia/Tokyo",
+      });
+
+      const { data: existingRecord, error: selectError } = await supabase
+        .from("daily_records")
+        .select("id, user_id, record_date")
+        .eq("user_id", user.id)
+        .eq("record_date", recordDate)
+        .maybeSingle();
+
+      if (selectError) {
+        console.error("Failed to load daily record:", selectError);
+        return;
+      }
+
+      if (existingRecord) {
+        setDailyRecord(existingRecord);
+        return;
+      }
+
+      const { data: createdRecord, error: insertError } = await supabase
+        .from("daily_records")
+        .upsert(
+          {
+            user_id: user.id,
+            record_date: recordDate,
+          },
+          {
+            onConflict: "user_id,record_date",
+          }
+        )
+        .select("id, user_id, record_date")
+        .single();
+
+      if (insertError) {
+        console.error("Failed to create daily record:", insertError);
+        return;
+      }
+
+      setDailyRecord(createdRecord);
     };
 
-    loadProfile();
+    loadData();
   }, [supabase]);
 
   const handleLogout = async () => {
@@ -53,6 +100,12 @@ export default function HomePage() {
 
         <p className="mt-2 break-all font-semibold text-zinc-900">
           {displayName || "取得中..."}
+        </p>
+
+        <p className="mt-6 text-sm text-zinc-500">
+          {dailyRecord
+            ? `今日の記録: ${dailyRecord.record_date}`
+            : "今日の記録を準備中..."}
         </p>
 
         <button
