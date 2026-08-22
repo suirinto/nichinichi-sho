@@ -25,6 +25,13 @@ type Item = {
   is_active: boolean;
 };
 
+type Event = {
+  id: string;
+  item_id: string;
+  status: string;
+  happened_on: string;
+  start_at: string | null;
+};
 
 export default function HomePage() {
   const router = useRouter();
@@ -34,6 +41,7 @@ export default function HomePage() {
   const [dailyRecord, setDailyRecord] = useState<DailyRecord | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<Item[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -45,6 +53,10 @@ export default function HomePage() {
         return;
       }
 
+      const recordDate = new Date().toLocaleDateString("sv-SE", {
+        timeZone: "Asia/Tokyo",
+      });
+      
       const { data: profile, error: profileError } = await supabase
         .from("users")
         .select("display_name")
@@ -85,10 +97,20 @@ export default function HomePage() {
       }
 
       setItems(itemData ?? []);
+      
+      const { data: eventData, error: eventError } = await supabase
+        .from("events")
+        .select("id, item_id, status, happened_on, start_at")
+        .eq("user_id", user.id)
+        .eq("happened_on", recordDate)
+        .order("start_at", { ascending: true });
 
-      const recordDate = new Date().toLocaleDateString("sv-SE", {
-        timeZone: "Asia/Tokyo",
-      });
+      if (eventError) {
+        console.error("Failed to load events:", eventError);
+        return;
+      }
+
+      setEvents(eventData ?? []);
 
       const { data: existingRecord, error: selectError } = await supabase
         .from("daily_records")
@@ -145,20 +167,25 @@ export default function HomePage() {
       timeZone: "Asia/Tokyo",
     });
 
-    const { error } = await supabase.from("events").insert({
-      user_id: user.id,
-      item_id: itemId,
-      happened_on: recordDate,
-      status: "scheduled",
-      source: "manual",
-    });
+    const { data: createdEvent, error } = await supabase
+      .from("events")
+      .insert({
+        user_id: user.id,
+        item_id: itemId,
+        happened_on: recordDate,
+        status: "scheduled",
+        source: "manual",
+      })
+      .select("id, item_id, status, happened_on, start_at")
+      .single();
 
     if (error) {
       console.error("Failed to create event:", error);
       return;
     }
 
-    console.log("Event created");
+    setEvents((currentEvents) => [...currentEvents, createdEvent]);
+    
   };
   
   const handleLogout = async () => {
@@ -183,37 +210,66 @@ export default function HomePage() {
             : "今日の記録を準備中..."}
         </p>
 
-          <div className="mt-6 text-left">
-            <p className="text-sm font-semibold text-zinc-700">カテゴリ</p>
+        <div className="mt-6 text-left">
+          <p className="text-sm font-semibold text-zinc-700">カテゴリ</p>
 
-            <div className="mt-3 space-y-4">
-              {categories.map((category) => {
-                const categoryItems = items.filter(
-                  (item) => item.category_id === category.id
+          <div className="mt-3 space-y-4">
+            {categories.map((category) => {
+              const categoryItems = items.filter(
+                (item) => item.category_id === category.id
+              );
+
+              return (
+                <div key={category.id}>
+                  <p className="font-semibold text-zinc-900">{category.name}</p>
+
+                  <ul className="mt-2 space-y-2">
+                    {categoryItems.map((item) => (
+                      <li key={item.id}>
+                        <button
+                          type="button"
+                          onClick={() => handleCreateEvent(item.id)}
+                          className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-left text-sm text-zinc-800 hover:bg-zinc-50"
+                        >
+                          {item.name}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+          
+        <div className="mt-8 text-left">
+          <p className="text-sm font-semibold text-zinc-700">
+            今日のイベント
+          </p>
+
+          {events.length === 0 ? (
+            <p className="mt-2 text-sm text-zinc-500">
+              まだイベントはありません
+            </p>
+          ) : (
+            <ul className="mt-3 space-y-2">
+              {events.map((event) => {
+                const item = items.find(
+                  (item) => item.id === event.item_id
                 );
 
                 return (
-                  <div key={category.id}>
-                    <p className="font-semibold text-zinc-900">{category.name}</p>
-
-                    <ul className="mt-2 space-y-2">
-                      {categoryItems.map((item) => (
-                        <li key={item.id}>
-                          <button
-                            type="button"
-                            onClick={() => handleCreateEvent(item.id)}
-                            className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-left text-sm text-zinc-800 hover:bg-zinc-50"
-                          >
-                            {item.name}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                  <li
+                    key={event.id}
+                    className="rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-800"
+                  >
+                    {item?.name ?? "不明な項目"}
+                  </li>
                 );
               })}
-            </div>
-          </div>
+            </ul>
+          )}
+        </div>
           
         <button
           type="button"
