@@ -17,6 +17,14 @@ type Category = {
   is_active: boolean;
 };
 
+type Item = {
+  id: string;
+  category_id: string;
+  name: string;
+  sort_order: number;
+  is_active: boolean;
+};
+
 export default function HomePage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -24,6 +32,7 @@ export default function HomePage() {
   const [displayName, setDisplayName] = useState("");
   const [dailyRecord, setDailyRecord] = useState<DailyRecord | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [items, setItems] = useState<Item[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -61,6 +70,20 @@ export default function HomePage() {
       }
 
       setCategories(categoryData ?? []);
+      
+      const { data: itemData, error: itemError } = await supabase
+        .from("items")
+        .select("id, category_id, name, sort_order, is_active")
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true });
+
+      if (itemError) {
+        console.error("Failed to load items:", itemError);
+        return;
+      }
+
+      setItems(itemData ?? []);
 
       const recordDate = new Date().toLocaleDateString("sv-SE", {
         timeZone: "Asia/Tokyo",
@@ -133,16 +156,30 @@ export default function HomePage() {
           <div className="mt-6 text-left">
             <p className="text-sm font-semibold text-zinc-700">カテゴリ</p>
 
-            <ul className="mt-2 space-y-2">
-              {categories.map((category) => (
-                <li
-                  key={category.id}
-                  className="rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-800"
-                >
-                  {category.name}
-                </li>
-              ))}
-            </ul>
+            <div className="mt-3 space-y-4">
+              {categories.map((category) => {
+                const categoryItems = items.filter(
+                  (item) => item.category_id === category.id
+                );
+
+                return (
+                  <div key={category.id}>
+                    <p className="font-semibold text-zinc-900">{category.name}</p>
+
+                    <ul className="mt-2 space-y-2">
+                      {categoryItems.map((item) => (
+                        <li
+                          key={item.id}
+                          className="rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-800"
+                        >
+                          {item.name}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
           </div>
           
         <button
