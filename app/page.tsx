@@ -31,6 +31,8 @@ type Event = {
   status: string;
   happened_on: string;
   start_at: string | null;
+  end_at: string | null;
+  duration_minutes: number | null;
 };
 
 export default function HomePage() {
@@ -100,7 +102,9 @@ export default function HomePage() {
       
       const { data: eventData, error: eventError } = await supabase
         .from("events")
-        .select("id, item_id, status, happened_on, start_at")
+        .select(
+          "id, item_id, status, happened_on, start_at, end_at, duration_minutes"
+        )
         .eq("user_id", user.id)
         .eq("happened_on", recordDate)
         .order("start_at", { ascending: true });
@@ -176,7 +180,9 @@ export default function HomePage() {
         status: "scheduled",
         source: "manual",
       })
-      .select("id, item_id, status, happened_on, start_at")
+      .select(
+        "id, item_id, status, happened_on, start_at, end_at, duration_minutes"
+      )
       .single();
 
     if (error) {
@@ -186,6 +192,65 @@ export default function HomePage() {
 
     setEvents((currentEvents) => [...currentEvents, createdEvent]);
     
+  };
+
+  const calculateDurationMinutes = (
+    startAt: string | null,
+    endAt: string | null
+  ) => {
+    if (!startAt || !endAt) {
+      return null;
+    }
+
+    const duration = Math.round(
+      (new Date(endAt).getTime() - new Date(startAt).getTime()) / 60000
+    );
+
+    return duration >= 0 ? duration : null;
+  };
+  
+  const handleUpdateStartTime = async (
+    eventId: string,
+    happenedOn: string,
+    time: string,
+    endAt: string | null
+  ) => {
+    const startAt = `${happenedOn}T${time}:00+09:00`;
+    const durationMinutes = calculateDurationMinutes(startAt, endAt);
+
+    const { error } = await supabase
+      .from("events")
+      .update({
+        start_at: startAt,
+        duration_minutes: durationMinutes,
+      })
+      .eq("id", eventId);
+
+    if (error) {
+      console.error("Failed to update start_at:", error);
+    }
+  };
+
+  const handleUpdateEndTime = async (
+    eventId: string,
+    happenedOn: string,
+    time: string,
+    startAt: string | null
+  ) => {
+    const endAt = `${happenedOn}T${time}:00+09:00`;
+    const durationMinutes = calculateDurationMinutes(startAt, endAt);
+
+    const { error } = await supabase
+      .from("events")
+      .update({
+        end_at: endAt,
+        duration_minutes: durationMinutes,
+      })
+      .eq("id", eventId);
+
+    if (error) {
+      console.error("Failed to update end_at:", error);
+    }
   };
   
   const handleLogout = async () => {
@@ -264,6 +329,114 @@ export default function HomePage() {
                     className="rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-800"
                   >
                     {item?.name ?? "不明な項目"}
+
+                    <div className="mt-2">
+                      <label className="block text-xs text-zinc-500">
+                        開始時刻
+                      </label>
+
+                      <input
+                        type="time"
+                        value={
+                          event.start_at
+                            ? new Date(event.start_at).toLocaleTimeString("ja-JP", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: false,
+                                timeZone: "Asia/Tokyo",
+                              })
+                            : ""
+                        }
+                        onChange={(e) => {
+                          const time = e.target.value;
+                          const startAt = `${event.happened_on}T${time}:00+09:00`;
+                          const durationMinutes = calculateDurationMinutes(
+                            startAt,
+                            event.end_at
+                          );
+
+                          setEvents((currentEvents) =>
+                            currentEvents.map((currentEvent) =>
+                              currentEvent.id === event.id
+                                ? {
+                                    ...currentEvent,
+                                    start_at: startAt,
+                                    duration_minutes: durationMinutes,
+                                  }
+                                : currentEvent
+                            )
+                          );
+
+                          handleUpdateStartTime(
+                            event.id,
+                            event.happened_on,
+                            time,
+                            event.end_at
+                          );
+                        }}
+                        className="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1 text-sm"
+                      />
+                      <div className="mt-2">
+                        <label className="block text-xs text-zinc-500">
+                          終了時刻
+                        </label>
+
+                        <input
+                          type="time"
+                          value={
+                            event.end_at
+                              ? new Date(event.end_at).toLocaleTimeString("ja-JP", {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  hour12: false,
+                                  timeZone: "Asia/Tokyo",
+                                })
+                              : ""
+                          }
+                        onChange={(e) => {
+                          const time = e.target.value;
+                          const endAt = `${event.happened_on}T${time}:00+09:00`;
+                          const durationMinutes = calculateDurationMinutes(
+                            event.start_at,
+                            endAt
+                          );
+
+                          setEvents((currentEvents) =>
+                            currentEvents.map((currentEvent) =>
+                              currentEvent.id === event.id
+                                ? {
+                                    ...currentEvent,
+                                    end_at: endAt,
+                                    duration_minutes: durationMinutes,
+                                  }
+                                : currentEvent
+                            )
+                          );
+
+                          handleUpdateEndTime(
+                            event.id,
+                            event.happened_on,
+                            time,
+                            event.start_at
+                          );
+                        }}
+                          className="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1 text-sm"
+                        />
+                      </div>
+                    </div>
+                        
+                    <div className="mt-2">
+                      <span className="block text-xs text-zinc-500">
+                        実施時間
+                      </span>
+
+                      <span className="mt-1 block text-sm text-zinc-800">
+                        {event.duration_minutes !== null
+                          ? `${event.duration_minutes}分`
+                          : "未計算"}
+                      </span>
+                    </div>
+                        
                   </li>
                 );
               })}
