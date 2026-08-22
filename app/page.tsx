@@ -253,6 +253,25 @@ export default function HomePage() {
     }
   };
   
+  const handleUpdateStatus = async (eventId: string, status: string) => {
+    setEvents((currentEvents) =>
+      currentEvents.map((currentEvent) =>
+        currentEvent.id === eventId
+          ? { ...currentEvent, status }
+          : currentEvent
+      )
+    );
+
+    const { error } = await supabase
+      .from("events")
+      .update({ status })
+      .eq("id", eventId);
+
+    if (error) {
+      console.error("Failed to update status:", error);
+    }
+  };
+  
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.replace("/login");
@@ -329,6 +348,26 @@ export default function HomePage() {
                     className="rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-800"
                   >
                     {item?.name ?? "不明な項目"}
+
+                    <div className="mt-2">
+                      <label className="block text-xs text-zinc-500">
+                        状態
+                      </label>
+
+                      <select
+                        value={event.status}
+                        onChange={(e) =>
+                          handleUpdateStatus(event.id, e.target.value)
+                        }
+                        className="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1 text-sm"
+                      >
+                        <option value="scheduled">scheduled</option>
+                        <option value="in_progress">in_progress</option>
+                        <option value="completed">completed</option>
+                        <option value="cancelled">cancelled</option>
+                        <option value="skipped">skipped</option>
+                      </select>
+                    </div>
 
                     <div className="mt-2">
                       <label className="block text-xs text-zinc-500">
