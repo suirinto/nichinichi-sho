@@ -25,6 +25,7 @@ type Item = {
   is_active: boolean;
 };
 
+
 export default function HomePage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -131,6 +132,35 @@ export default function HomePage() {
     loadData();
   }, [supabase]);
 
+  const handleCreateEvent = async (itemId: string) => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return;
+    }
+
+    const recordDate = new Date().toLocaleDateString("sv-SE", {
+      timeZone: "Asia/Tokyo",
+    });
+
+    const { error } = await supabase.from("events").insert({
+      user_id: user.id,
+      item_id: itemId,
+      happened_on: recordDate,
+      status: "scheduled",
+      source: "manual",
+    });
+
+    if (error) {
+      console.error("Failed to create event:", error);
+      return;
+    }
+
+    console.log("Event created");
+  };
+  
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.replace("/login");
@@ -168,11 +198,14 @@ export default function HomePage() {
 
                     <ul className="mt-2 space-y-2">
                       {categoryItems.map((item) => (
-                        <li
-                          key={item.id}
-                          className="rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-800"
-                        >
-                          {item.name}
+                        <li key={item.id}>
+                          <button
+                            type="button"
+                            onClick={() => handleCreateEvent(item.id)}
+                            className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-left text-sm text-zinc-800 hover:bg-zinc-50"
+                          >
+                            {item.name}
+                          </button>
                         </li>
                       ))}
                     </ul>

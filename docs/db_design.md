@@ -272,13 +272,13 @@ Googleカレンダー由来でも、アプリ内で直接追加したもので�
 - `user_id` / `item_id` / `happened_on` / `status` / `source` / `created_at` / `updated_at` は `NOT NULL`
 - `user_id` は `users(id)` を参照し、ユーザー削除時は `ON DELETE CASCADE`
 - `item_id` は `items(id)` を参照し、参照中項目の削除は `ON DELETE RESTRICT`
-- `status` は `scheduled` / `completed` / `cancelled` / `skipped`
+- `status` は `scheduled` / `in_progress` / `completed` / `cancelled` / `skipped`
 - `status` の初期値は `scheduled`
+- `start_at` / `end_at` はイベントの現在の開始・終了日時を表す
+- `duration_minutes` は実績時間として手入力可能
+- `duration_minutes` 未入力時は `start_at` と `end_at` から算出可能
 - `source` は `manual` / `google_calendar`
-- `source` の初期値は `manual`
 - Google由来の場合は `unique(user_id, google_calendar_id, google_event_id)`
-- `duration_minutes` は実績として手入力可能
-- 未入力時は `start_at` と `end_at` から算出可能
 - Googleカレンダー側で予定時刻やタイトルを変更しても、`google_event_id` で同一予定として追従する
 - `created_at` / `updated_at` の初期値は `now()`
 
