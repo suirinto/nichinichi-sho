@@ -10,12 +10,20 @@ type DailyRecord = {
   record_date: string;
 };
 
+type Category = {
+  id: string;
+  name: string;
+  sort_order: number;
+  is_active: boolean;
+};
+
 export default function HomePage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
 
   const [displayName, setDisplayName] = useState("");
   const [dailyRecord, setDailyRecord] = useState<DailyRecord | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -39,6 +47,20 @@ export default function HomePage() {
       }
 
       setDisplayName(profile.display_name ?? "");
+      
+      const { data: categoryData, error: categoryError } = await supabase
+        .from("categories")
+        .select("id, name, sort_order, is_active")
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true });
+
+      if (categoryError) {
+        console.error("Failed to load categories:", categoryError);
+        return;
+      }
+
+      setCategories(categoryData ?? []);
 
       const recordDate = new Date().toLocaleDateString("sv-SE", {
         timeZone: "Asia/Tokyo",
@@ -108,6 +130,21 @@ export default function HomePage() {
             : "今日の記録を準備中..."}
         </p>
 
+          <div className="mt-6 text-left">
+            <p className="text-sm font-semibold text-zinc-700">カテゴリ</p>
+
+            <ul className="mt-2 space-y-2">
+              {categories.map((category) => (
+                <li
+                  key={category.id}
+                  className="rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-800"
+                >
+                  {category.name}
+                </li>
+              ))}
+            </ul>
+          </div>
+          
         <button
           type="button"
           onClick={handleLogout}
